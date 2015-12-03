@@ -1,11 +1,11 @@
 #include <stdio.h>
 #include <errno.h>
-
+#include <time.h>
 #include <sys/inotify.h>
 
 #define EVENT_SIZE (sizeof(struct inotify_event))
-/* TODO: What the size of the buffer should be? */
-#define BUFFER_SIZE (10 * (sizeof(struct inotify_event) + 16))
+#define MAX_EVENTS 128
+#define BUFFER_SIZE (MAX_EVENTS * ( EVENT_SIZE + 16))
 
 static void
 eventInformation(struct inotify_event *e)
@@ -31,6 +31,20 @@ eventInformation(struct inotify_event *e)
     if (e->mask & IN_Q_OVERFLOW)    printf("IN_Q_OVERFLOW ");
     if (e->mask & IN_UNMOUNT)       printf("IN_UNMOUNT ");
     printf("\n");
+}
+
+/* Prints timestamp on output row */
+void timestamp()
+{
+  time_t ltime;
+  struct tm *Tm;
+  char buffer[10];
+
+  ltime=time(NULL);
+  Tm=localtime(&ltime);
+  strftime(buffer, sizeof(buffer), "%H:%M:%S", Tm);
+
+  printf("%s: ", buffer);
 }
 
 int main(int argc, char **argv)
@@ -70,7 +84,7 @@ int main(int argc, char **argv)
         perror("inotify_add_watch");
       }
   }
-
+    
   printf("All files initialized.\n");
   printf("---------------------------------------------\n");
 
@@ -82,10 +96,12 @@ int main(int argc, char **argv)
     }
     else {
       /* Event found */
+      timestamp();
       printf("Read %ld bytes from inotify fd\n", (long) readLength);
       // Get information from event
       for(k = buffer; k < buffer + readLength;)
       {
+	timestamp();
         event = (struct inotify_event *) k;
         eventInformation(event);
         k += sizeof(struct inotify_event) + event->len;
